@@ -24,6 +24,11 @@ public:
     {
         static_cast<const T*>(this)->writeImpl(str); //here the magic is!!!
     }
+
+    T *clone() const {
+        //copy constructor
+        return new T(static_cast<T const&>(*this));
+    }
 };
 
 
@@ -52,6 +57,8 @@ public:
     {
          cout<<"ConsoleWriter write something"<<endl;
     }
+    //some more things
+    int speed = 99;
 };
 
 int main() {
@@ -61,5 +68,9 @@ int main() {
     FileWriter fwr;
     cout<<fwr.name<<endl;
     fwr.write("bbb");
+    ConsoleWriter *another_wr = wr.clone();
+    cout<<another_wr->name<<endl;
+    another_wr->write("ccc");
+    cout<<another_wr->speed<<endl;
     return 0;
 }
