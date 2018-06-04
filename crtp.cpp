@@ -46,8 +46,17 @@ public:
     
 };
 
+//injecting behaviour flush_console to an existing console
+template <class T>
+struct Enable_Flush_Console {
+    void flush_console (){
+        T const & t = static_cast<T const &>(*this);
+        cout<<"current writing " << t.current_writing<<endl;
+        cout<<"flushing..."<<endl;
+    }
+};
 
-class ConsoleWriter : public Writer<ConsoleWriter>
+class ConsoleWriter : public Writer<ConsoleWriter>, public Enable_Flush_Console<ConsoleWriter>
 {
 public:
     ConsoleWriter() {name="ConsoleWriter"; }
@@ -56,10 +65,13 @@ public:
     void writeImpl(string something) const
     {
          cout<<"ConsoleWriter write something"<<endl;
+         current_writing.append(something);
     }
     //some more things
     int speed = 99;
+    mutable string current_writing;
 };
+
 
 int main() {
     ConsoleWriter wr;
@@ -71,6 +83,7 @@ int main() {
     ConsoleWriter *another_wr = wr.clone();
     cout<<another_wr->name<<endl;
     another_wr->write("ccc");
-    cout<<another_wr->speed<<endl;
+    cout<<"console writer speed: " <<another_wr->speed<<endl;
+    another_wr->flush_console();
     return 0;
 }
