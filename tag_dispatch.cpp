@@ -54,6 +54,46 @@ bool check (T &v) {
     return check(v, conditional_t<is_shared_ptr<T>::value,true_type, false_type>{} );
 }
 
+//tag dispatch
+struct Alg1{
+    static const string name;
+};
+string const Alg1::name="Alg1";
+
+struct Alg2{
+    static const string name;
+};
+string const Alg2::name = "Alg2";
+
+class CompareTest1 {
+public:
+    using AlgorithmClass = Alg1;
+    int a = 100;
+};
+
+class CompareTest2 {
+public:
+    using AlgorithmClass = Alg2;
+    int b = 100;
+};
+
+template <typename T>
+bool is_equal (T t) {
+    return is_equal(t,typename T::AlgorithmClass() );
+}
+template <typename T>
+bool is_equal (T t, Alg1 ){
+    cout<<"Using "<<Alg1::name<<endl;
+    return true;
+}
+
+template <typename T>
+bool is_equal (T t, Alg2 ){
+    cout<<"Using "<<Alg2::name<<endl;
+    return false;
+}
+
+
 int main (){
     cout<<is_shared_ptr<int>::value<<endl;
     typedef shared_ptr<int> shared_int_ptr;
@@ -65,5 +105,9 @@ int main (){
     auto shared_p =clone_instance(test_ptr);
     cout<<"checking a shared p. expecting true..."<<boolalpha<<check(shared_p)<<endl;
     cout<<"checking a pointer. expecting false..."<<boolalpha<<check(p)<<endl;
+    CompareTest1 test1;
+    CompareTest2 test2;
+    is_equal(test1);
+    is_equal(test2);
     return 0;
 }
