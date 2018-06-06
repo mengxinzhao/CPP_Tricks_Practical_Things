@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.4)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+project (CPP_Tricks_Practical_Things)
+add_executable (crtp crtp.cpp)
+add_executable (policy_based_design  policy_based_design.cpp)
+add_executable (tag_dispatch  tag_dispatch.cpp)
+add_executable(sfinae sfinae.cpp)
+add_executable(5_default_operations 5_default_operations.cpp)
