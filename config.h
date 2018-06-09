@@ -1,46 +1,115 @@
 //
-// Created by gltest on 6/8/18.
+// Created by Vesper on 6/8/18.
 //
 
 #ifndef CPP_TRICKS_PRACTICAL_THINGS_CONFIG_H
 #define CPP_TRICKS_PRACTICAL_THINGS_CONFIG_H
 #include <utility>
 #include <memory>
+#include <vector>
+#include <iostream>
+#include <utility>
 
 using namespace std;
 struct ConfigBuilder;
-struct Config
+
+namespace detail {
+    class Feature {
+    public:
+
+        // the 5 default here
+        ~Feature() {}
+
+        template<class T>
+        Feature(T &data) : self_(make_shared<Holder < T> > (data)) { cout << "& ctor" << endl; }
+
+        template<class T>
+        Feature(T &&data) : self_(make_shared<Holder < T> > (forward<T>(data))) { cout << "&& ctor" << endl; }
+
+        template<class T>
+        T &operator=(T const &rhs) {
+            if (this == &rhs)
+                return *this;
+            self_ = make_shared<Holder < T> > (rhs);
+            cout << "& assign" << endl;
+            return *this;
+        }
+
+        template<class T>
+        T &operator=(T const &&rhs) {
+            if (this == &rhs)
+                return *this;
+            self_ = make_shared<Holder < T> > (rhs);
+            cout << "&& assign" << endl;
+            return *this;
+        }
+
+        void get() const {
+            self_->get();
+        }
+
+
+    private:
+        struct Concept {
+            virtual ~Concept() = default;
+            virtual void get() const  = 0;
+        };
+
+        template<class T>
+        class Holder : public Concept {
+        public:
+            Holder(T data) : data_(data) {}
+            void get() const override  {
+                data_.get();
+            }
+
+        private:
+            T data_;
+        };
+
+        std::shared_ptr<Concept> self_;
+    };
+
+};
+
+class Config
 {
-    bool support_A;
-    bool support_B;
-    bool support_C;
+public:
 
     ~Config(){}
-    Config():support_A(false),support_B(false),support_C(false){}
-    Config(bool _support_A, bool _support_B,bool _support_C):support_A(_support_A), support_B(_support_B),support_C(_support_C){}
-    Config(Config &rhs):support_A(rhs.support_A), support_B(rhs.support_B), support_C(rhs.support_C) {}
-    Config(Config &&rhs) : support_A(move(rhs.support_A)),
-                           support_B(move(rhs.support_B)),
-                           support_C(move(rhs.support_C)) {}
+    Config() {}
+    Config(Config &rhs)  {
+        copy(rhs.table.begin(), rhs.table.end(), table.begin());
+    }
+    Config(Config &&rhs){
+        move(rhs.table.begin(), rhs.table.end(), table.begin());
+    }
 
     Config &operator = (Config &rhs){
         if (this == &rhs)
             return *this;
-        support_A = rhs.support_A;
-        support_B = rhs.support_B;
-        support_C = rhs.support_C;
+        copy(rhs.table.begin(), rhs.table.end(), table.begin());
         return *this;
     }
     Config &operator = (Config &&rhs) {
         if (this == &rhs)
             return *this;
-        support_A = move(rhs.support_A);
-        support_B = move(rhs.support_B);
-        support_C = move(rhs.support_C);
+        move(rhs.table.begin(), rhs.table.end(), table.begin());
         return *this;
     }
-
+    friend class ConfigBuilder;
     static ConfigBuilder create();
+    // return begin and end of the feature table
+    typedef vector<detail::Feature>::const_iterator Iterator;
+    const pair<Iterator, Iterator > get_features()  {
+        return {table.cbegin(),table.cend()};
+    }
+protected:
+
+    vector<detail::Feature> table;
+
+
+
 
 };
 

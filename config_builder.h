@@ -18,12 +18,18 @@ struct ConfigBuilder {
 
     // overloading operator()
     shared_ptr<Config>  operator ()()  const {
-        return move(config);
+        return config;
     }
-
-    ConfigBuilder& set_support_A(bool value) ;
-    ConfigBuilder& set_support_B(bool value) ;
-    ConfigBuilder& set_support_C(bool value) ;
+    template<typename T>
+    ConfigBuilder& set_feature(T &t) {
+        config->table.push_back(t);
+        return *this;
+    }
+    template<typename T>
+    ConfigBuilder& set_feature(T &&t) {
+        config->table.emplace_back(move(t));
+        return *this;
+    }
 };
 
 
