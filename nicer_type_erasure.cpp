@@ -1,4 +1,7 @@
+#include <iostream>
 
+// code entirely comes from this https://aherrmann.github.io/programming/2014/10/19/type-erasure-with-merged-concepts/
+// just keep it here in case someday it might be useful
 namespace detail {
     // Holds a value of arbitrary type.
     template <class T>
@@ -16,7 +19,7 @@ namespace detail {
     };
 
     // container templated on the concept and the real data model underneath
-    // Container<OpenerSpec::Concept, OpenerSpec::Model>::Container<Enlish>(English)
+    // Container<OpenerSpec::Concept, OpenerSpec::Model>::Container<English>(English)
     template <class Concept_, template <class> class Model>
     class Container {
     public:
@@ -133,18 +136,16 @@ void greet_tom(const Greeter &g) {
     g.greet("Tom");
 }
 
-//
-//int main() {
-//    English en;
-//    French fr;
-//
-//    open_door(en);
-//    open_door(fr);
-//    std::cout << "----------------\n";
-//    greet_tom(en);
-//    greet_tom(fr);
-//    std::cout << "----------------\n";
-//    open_door_and_greet_john(en);
-//    open_door_and_greet_john(fr);
-//}
+
+int main() {
+    English en;
+    French fr;
+
+    open_door(en);
+    open_door(fr);
+    std::cout << "----------------\n";
+    greet_tom(en);
+    greet_tom(fr);
+    std::cout << "----------------\n";
+}
 

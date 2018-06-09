@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <queue>
+#include <typeinfo>
 using namespace std;
 
 // The problem comes from elevator simulation command_streamer construction
@@ -140,7 +141,7 @@ int main() {
     command_streamer.emplace(StopCommand{});
     while(!command_streamer.empty()) {
         auto  &e = command_streamer.front();
-        //do stuff with the element
+        // do stuff with the element
         // a better idea will even be command has its comman handler  register before
         // so it invoke e.handle() -->data already binded.
         e.do_something(10);
@@ -149,6 +150,5 @@ int main() {
         command_streamer.front().print();
         command_streamer.pop();
     }
-
     return 0;
 }
