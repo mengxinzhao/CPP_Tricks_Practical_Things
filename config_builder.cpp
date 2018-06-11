@@ -36,9 +36,9 @@ auto config_##NAME = Config::create().set_feature(FeatureA{})();
 #define DEFINE_CONFIG3(NAME, FeatureA,FeatureB, FeatureC)\
 auto config_##NAME = Config::create().set_feature(FeatureA{}).set_feature(FeatureB{}).set_feature(FeatureC{})();
 
-// how do I achive the configuration such as
-// #define DEFINE_CONFIG3(NAME, FeatureA,...FeatureN)\
-// auto config_##NAME = Config::create().set_feature(FeatureA{})....set_feature(FeatureN{})();
+#define DEFINE_CONFIG4(NAME, ...)\
+auto config_##NAME = Config::create().set_feature(__VA_ARGS__)();
+
 int main() {
 
     DEFINE_CONFIG2(NewProduc2, FeatureA);
@@ -61,4 +61,14 @@ int main() {
             cout<<"Feature B supported"<<endl;
 
     }
+    DEFINE_CONFIG4(TestProduct1, FeatureA{},FeatureB{});
+    DEFINE_CONFIG4(TestProduct2, FeatureA{},FeatureB{},FeatureC{},FeatureD{});
+    tie(begin, end) = config_TestProduct2->get_features();
+    iterator = begin;
+    while(iterator!= end) {
+        cout<<typeid(*iterator).name()<<endl;
+        iterator->get();
+        iterator++;
+    }
+    return 0;
 }

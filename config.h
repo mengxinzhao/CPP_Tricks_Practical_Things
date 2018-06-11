@@ -78,25 +78,12 @@ public:
 
     ~Config(){}
     Config() {}
-    Config(Config &rhs)  {
-        copy(rhs.table.begin(), rhs.table.end(), table.begin());
-    }
+    Config(Config &rhs)= delete;
+    Config &operator = (Config &rhs) = delete;
     Config(Config &&rhs){
         move(rhs.table.begin(), rhs.table.end(), table.begin());
     }
 
-    Config &operator = (Config &rhs){
-        if (this == &rhs)
-            return *this;
-        copy(rhs.table.begin(), rhs.table.end(), table.begin());
-        return *this;
-    }
-    Config &operator = (Config &&rhs) {
-        if (this == &rhs)
-            return *this;
-        move(rhs.table.begin(), rhs.table.end(), table.begin());
-        return *this;
-    }
     friend class ConfigBuilder;
     static ConfigBuilder create();
     // return begin and end of the feature table
