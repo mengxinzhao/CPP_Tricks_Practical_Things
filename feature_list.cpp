@@ -1,6 +1,13 @@
 //
 // Created by Vesper on 6/9/18.
 //
+#include <unordered_map>
+#include <string>
+#include <iostream>
+#include <vector>
+#include <utility>
+
+using namespace std;
 
 namespace feature {
     template<typename T>
@@ -10,6 +17,7 @@ namespace feature {
 
     template<typename... Features>
     struct FeatureList {
+        static const int size = sizeof...(Features);
     };
 
     template<typename T, typename... Features>
@@ -58,5 +66,10 @@ typedef FeatureList<A,##__VA_ARGS__> FeatureList_##NAME;
     static_assert(!ListContainsFeature<E,FeatureList_OldProduct>);
     static_assert(ListContainsFeature<B,FeatureList_OldProduct>);
     static_assert(ListContainsFeature<D,FeatureList_CurrentProduct>);
-
+    static_assert(5 == FeatureList_NewProdcut::size);
+    static_assert(5 != FeatureList_OldProduct::size,"FeatureList size not correct");
+    initializer_list<int> l{1,2,3,4};
+    vector<int> v2(l);
+    if (ListContainsFeature<D, FeatureList_CurrentProduct>)
+        cout<<"that's correct"<<endl;
 }
