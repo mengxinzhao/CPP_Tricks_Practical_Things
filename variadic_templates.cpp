@@ -3,8 +3,8 @@
 //
 
 // codes from https://www.youtube.com/watch?v=R1G3P5SRXCw&t=1179s
-// one template at the time of instantiation, can only look up the template
-// that is defined before it. It doesn't look up the all definition.
+// one template at the time of instantiation, can only look up the templates
+// that are defined before it. It doesn't look up the all definition.
 // So need to make sure the special cases are all defined before
 #include <iostream>
 template <typename T>

@@ -9,6 +9,7 @@
 #include <vector>
 #include <iostream>
 #include <utility>
+#include <type_traits>
 
 using namespace std;
 struct ConfigBuilder;
@@ -48,11 +49,27 @@ namespace detail {
             self_->get();
         }
 
+        const type_info& type() const {
+            return self_->type();
+        }
+
+        //get the underlying data at the run time
+        template <typename T>
+        T get() {
+            return dynamic_cast<Holder<T>&>(*self_).get_data();
+        }
+
+        template <typename T>
+        const T get() const {
+            return dynamic_cast<Holder<T>&>(*self_).get_data();
+        }
+
 
     private:
         struct Concept {
             virtual ~Concept() = default;
             virtual void get() const  = 0;
+            virtual const type_info& type() const = 0;
         };
 
         template<class T>
@@ -62,12 +79,17 @@ namespace detail {
             void get() const override  {
                 data_.get();
             }
-
+            const type_info &type()  const override {
+                return typeid(T);
+            }
+            T get_data() const {
+                return data_;
+            }
         private:
             T data_;
         };
 
-        std::shared_ptr<Concept> self_;
+        shared_ptr<Concept> self_;
     };
 
 };

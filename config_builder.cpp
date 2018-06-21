@@ -57,6 +57,7 @@ int main() {
         cout<<typeid(*iterator).name()<<endl;
         iterator->get();
         iterator++;
+        // this is not gonna match because the real type is hidden
         if (typeid(*iterator) == typeid(FeatureB))
             cout<<"Feature B supported"<<endl;
 
@@ -66,7 +67,11 @@ int main() {
     tie(begin, end) = config_TestProduct2->get_features();
     iterator = begin;
     while(iterator!= end) {
-        cout<<typeid(*iterator).name()<<endl;
+        if (iterator->type() == typeid(FeatureC{})){
+            auto f_c = iterator->get<FeatureC>();
+            cout<<"Feature C supported"<<endl;
+            cout<<typeid(*iterator).name()<<endl;
+        }
         iterator->get();
         iterator++;
     }
