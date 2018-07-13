@@ -1,0 +1,118 @@
+ CppCon 2014: Herb Sutter "Back to the Basics! Essentials of Modern C++ Style"
+// main things to consider back to essential 
+Loops
+pointers & references
+smart pointers
+variable declarations
+Parameter passing
+
+1. Use default range based loop iteration 
+2. If no ownership/lifetime management needs to be addressed, use raw pointer especially true when you can pass raw reference instead of smart pointer reference 
+3. Between two equal options, choose the fast and simple one.
+4. Pass small pointer:  for classes coming from factory method, use unique_ptr/shared_ptr. For method that consumes ownership and classe, use unique_ptr/shared_ptr
+5. Const unique_ptr doesn't serve anything
+6. Passing smart pointer rules:
+
+shared_ptr<widget>factory();// source + shared ownership 
+			 // when you know it will be shared, perhaps by factory itself
+void share( shared_ptr<widget>);// share –“will” retain refcount
+void reseat( shared_ptr<widget>&);// “will” or “might” reseat ptr
+void may_share( const shared_ptr<widget>&);// “might” retain refcount. If do need a copy there is no refcount bump-up
+
+Rules:
+1).Never pass smart pointers (by value or by reference) unless you actually want to manipulate the pointer ==> store, change, or let go of a reference.
+2).Express ownership using unique_ptr wherever possible, including when you don’t know whether the object will actually ever be shared.
+3).Else use make_shared up front whenever possible if object will be shared.
+
+7.deference unaliased+local RC ptr
+//global static or heap, or aliased local
+...shared_ptr<widget> g_p...
+void f(widget &w){
+	g();
+	use(w);
+}
+ 
+void g(){
+	g_p= ...; // at this point g_p might be reset and its last pointer's refcount reset to 0 thus get deleted somewhere down the line
+}
+------------------------------------------
+void my_code(){
+	auto pin = g_p; //+1 for whole tree
+	f(*pin) // ok, this is local 
+}
+
+8. About using auto
+1).With deduction you always get right type.Repetition
+2).Using deduction makes your code more robust in the face of change.Deduction tracks the correct type when an expression’s type changes.Committing to explicit type = silent conversions, needless build breaks.
+3).Deduction guarantees no implicit conversion will happen.A.k.a. “guarantees better performance by default.”Committing to an explicit type that requires a conversion means silently getting a conversion whether you expected it or not.
+4.Prefer auto x = expr;by default on variable declarations.
+
+9. When to write rvalue?
+
+// regular approach
+class employee {
+	std::string name_;
+public:
+	void set_name( const std::string& name ) { name_ = name; }
+	//optimize for rvalue 
+	void set_name( std::string&& name ) noexcept{ name_ = std::move(name); }
+};
+
+// pass by value. c++11 new features. Use it with caution 
+class employee {
+	std::string name_;
+public:
+	void set_name( std::string name ) noexcept{ name_ = std::move(name); }
+};
+
+Optimized to steal from rvalues, without overloading:
+ * Pass named object: 1 copy construction(100% alloc if long)+ move op=
+ * Pass a temporary: 1 move assignment (~5 ints, no alloc noexcept-ish)
+ * This “noexcept” is… problematic ==> because it might have alloc
+
+
+// advanced options:
+#include <iostream>
+#include <string>
+
+class employee {
+    std::string name_;
+    public:template<class String, class = std::enable_if_t<!std::is_same<std::decay_t<String>,std::string>::value>>
+    void set_name( String&& name ) noexcept(std::is_nothrow_assignable<std::string&, String>::value){ 
+        name_ = std::forward<String>(name); 
+        return;
+    }
+};
+
+int main () {
+    auto new_one = employee{};
+    new_one.set_name<std::string,std::string>(std::string("Vesper"));
+}
+
+Optimized to steal from rvalues (and more), sort of without overloading:
+ * Pass a named object: 1 copy assignment (<<50% alloc), as before
+ * Pass a temporary: 1 move assignment (~5 ints, no alloc noexcept)
+
+10. Good place to use "pass by value"
+Constructor
+class employee {
+	std::string name_;
+	std::string addr_;
+	std::string city_;
+public:
+	void employee( std::string name, std::string addr, std::string city ) : name_{std::move(name)}, addr_{std::move(addr)}, city_{std::move(city)} { }
+};
+
+10. return multiple values
+Use pair, tuple in the function and use auto for caller.
+pair<x,y> func(zzz)
+
+auto result = func(z);
+if (result.first) ...
+if (result.second)... 
+
+
+// use tie too
+tie(x_result, y_result) = func(z)
+if(x_result)...
+if (y_result)...
