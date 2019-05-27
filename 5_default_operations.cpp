@@ -47,6 +47,8 @@ public:
 private:
     int a=1000;
     vector<int> b={1,2,3,4,5,6};
+    // because of the const, the class it not copy assignable but movable
+    const int c = 10;
 };
 
 int main () {
