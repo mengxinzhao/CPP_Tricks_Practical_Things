@@ -3,6 +3,7 @@
 #include <utility>
 #include <iostream>
 #include <functional>
+#include <array>
 
 //A study on compile time sequence generation and computation
 //
@@ -69,6 +70,38 @@ using tuple_of = typename tuple_n<T, N>::template type<>;
 //==> matches tuple_n<int,1>::template type<int,int...>
 //==> matches tuple_n<int, 0>::template<int, int, int >::type == std::tuple<int, int, int>
 
+//generate an array of
+// array_of(1,2,3,4.0) ==> array<float,4>
+template<typename ...Ts>
+constexpr auto make_array(Ts &&...ts) -> std::array<std::common_type_t<Ts...>,sizeof...(ts)> {
+    // need to promote all elem type to the common type
+    using ElemType = std::common_type_t<Ts...>;
+    return {std::forward<ElemType>(ts)...};
+}
+// index_sequence<...Ints> is a type but when used in function template as argument
+// don't use index_sequence<...Ints>{}. Will not compile.
+// When used as an argument to a function template, the parameter pack Ints can
+// be deduced and used in pack expansion
+
+// generate an array of type T from index sequence
+template<typename T, std::size_t N, std::size_t ...Is>
+constexpr auto array_of_impl(std::index_sequence<Is...>) {
+    return std::array<T,N>{ {Is...} };
+}
+
+template<typename T, std::size_t N>
+constexpr auto array_of() {
+  return array_of_impl<T,N>(std::make_index_sequence<N>{});
+}
+
+// generate an array of Type T, size N and value V
+template<typename T, std::size_t N>
+constexpr auto array_of(T &&v) {
+  std::array<T,N> arr{};
+  arr.fill(v);
+  return arr;
+}
+
 //generate a number index sequence  that does square to the provided sequence
 // the result is a tuple object
 //square_seq<5> = {0, 1, 4, 9, 16}
@@ -129,6 +162,10 @@ void print_tuple(Tuple &&tuple){
 
 
 int main() {
+  //p idx_seq
+  //(const std::__1::integer_sequence<unsigned long, 1, 2, 4, 5>) $0 = {}
+  const auto idx_seq = std::index_sequence<1,2,4,5>{};
+  std::cout<<idx_seq.size()<<std::endl;
   constexpr int total_point = 64;
 //(gdb) ptype  sequence1
 //type = const struct std::integer_sequence<unsigned long, 0, 1, 2, 3 ...  60, 61, 62, 63>
@@ -159,5 +196,13 @@ int main() {
   //test with addtional args and standalone lambda
   for_each_elem(v5,[&](auto &x,int multiplier) {x*=multiplier; }, constant) ;
   print_tuple(v5);
+
+  const auto ar1 = make_array(1,2,3,4,5);
+  const auto ar2 = make_array(1,2,3,4,5.4);
+
+  const auto ar3 = array_of<int,3>();
+  const auto ar4 = array_of<int,0>();
+  const auto ar5 = array_of<int,5>(9);
+
   return 0;
 }
