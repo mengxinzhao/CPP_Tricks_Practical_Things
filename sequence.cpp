@@ -94,10 +94,8 @@ constexpr auto square_seq_impl(std::index_sequence<I,Next...>){
 template<std::size_t N>
 constexpr auto square_seq_v = square_seq_impl(std::make_index_sequence<N>{});
 
-auto print_element = [](const auto &elm) {std::cout<<elm << " ";};
-
 //iteration over tuples similar as for_each
-//for_each_elem(tuple, function_to_apply)
+//for_each_elem(tuple, function_to_apply, additional_args...)
 // generic form
 // 1st argument is tuple element, additional arguments are passed by
 template <size_t Index=0, typename Tuple,
@@ -105,11 +103,27 @@ template <size_t Index=0, typename Tuple,
          typename Func, typename ...Args> //additional arguments passed to the callable
 // it is either a specific return type or constexpr auto if you want to use auto
 constexpr auto for_each_elem(Tuple &&tuple, Func &&func, Args &&...args) {
+  if constexpr(Size > 0) {
     std::invoke(func,std::get<Index>(tuple),args...);
     if constexpr (Index+1 < Size) {
         for_each_elem<Index+1>(std::forward<Tuple>(tuple),
                     std::forward<Func>(func), std::forward<Args>(args)...);
     }
+  }
+}
+
+//print all tuple elements in a single call
+template <size_t Index = 0, typename Tuple,
+          size_t Size = std::tuple_size_v<std::decay_t<Tuple>>>
+void print_tuple(Tuple &&tuple){
+  if constexpr (Size >0) {
+    std::cout<<std::get<Index>(tuple) << " ";
+    if constexpr (Index+1 < Size) {
+      print_tuple<Index+1>(std::forward<Tuple>(tuple));
+    }else {
+      std::cout<<std::endl;
+    }
+  }
 }
 
 
@@ -133,15 +147,17 @@ int main() {
   //auto v6 = std::remove_const<decltype(v5)>(v5);
   static_assert(std::tuple_size<decltype(v0)>::value == 0);
   static_assert(std::tuple_size<decltype(v5)>::value == 5);
+
+  print_tuple(v0);
   // using index sequence implies all members in the tuple is integer
   // const float constant =0.5 would compile but x will be rounded to integer
   const int constant = 5;
-  for_each_elem(v5, print_element);
+  print_tuple(v5);
   for_each_elem(v5,[&](auto &x) {x+=constant; } ) ;
-  for_each_elem(v5, print_element);
+  print_tuple(v5);
 
   //test with addtional args and standalone lambda
   for_each_elem(v5,[&](auto &x,int multiplier) {x*=multiplier; }, constant) ;
-  for_each_elem(v5, print_element);
+  print_tuple(v5);
   return 0;
 }
