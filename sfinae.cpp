@@ -77,6 +77,22 @@ template<class T> struct has_print
 template <typename T>
 using has_typedef_target_type_t = typename T::target_type;
 
+struct TypeA {
+   TypeA(int _value):value(_value) {}
+   int value;
+};
+
+struct TypeB {
+   TypeB(int _value):value(_value) {}
+   int value;
+};
+
+template <typename T, std::enable_if_t<std::is_same<T, TypeA>::value, T>* = nullptr> 
+T& add1 (T & a){
+	a.value++;
+	return a;
+}
+
 int main(){
     class A{
         int a;
@@ -95,7 +111,11 @@ int main(){
   cout<<has_print<A>::value <<endl;
   cout<<has_print<TestClass> :: value<<endl;
   // check if a target_type is defined in class
-  std::cout << experimental:: is_detected<has_typedef_target_type_t, TestClass>::value << std::endl;
+  cout << experimental:: is_detected<has_typedef_target_type_t, TestClass>::value << endl;
+TypeA atype(10);
+TypeB btype(11);
+  cout<<add1(atype).value <<endl;
+//  cout<<add1(btype).value <<endl;
 
 }
 

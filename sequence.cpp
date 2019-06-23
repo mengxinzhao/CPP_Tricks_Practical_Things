@@ -2,6 +2,7 @@
 #include <tuple>
 #include <utility>
 #include <iostream>
+#include <functional>
 
 //A study on compile time sequence generation and computation
 //
@@ -69,7 +70,7 @@ using tuple_of = typename tuple_n<T, N>::template type<>;
 //==> matches tuple_n<int, 0>::template<int, int, int >::type == std::tuple<int, int, int>
 
 //generate a number index sequence  that does square to the provided sequence
-// the result is an index_sequence type not a tuple object!
+// the result is a tuple object
 //square_seq<5> = {0, 1, 4, 9, 16}
 
 // When generate a sequence from sequence, use index_sequence<I, ...Next> as type
@@ -89,8 +90,26 @@ constexpr auto square_seq_impl(std::index_sequence<I,Next...>){
     return  std::tuple_cat(std::make_tuple(I*I), square_seq_impl(std::index_sequence<Next...>{}));
 }
 
+//variable template
 template<std::size_t N>
 constexpr auto square_seq_v = square_seq_impl(std::make_index_sequence<N>{});
+
+auto print_element = [](const auto &elm) {std::cout<<elm << " ";};
+
+//iteration over tuples similar as for_each
+//for_each_elem(tuple, function_to_apply)
+// generic form
+template <size_t Index=0, typename Tuple,
+         size_t Size = std::tuple_size_v<std::decay_t<Tuple>>,
+         typename Func> //additional arguments passed to the callable
+void for_each_elem(Tuple &&tuple, Func &&func) {
+    //std::invoke(func,std::get<Index>(tuple)); // doesn't work here why?
+    func(std::get<Index>(tuple));
+    if constexpr (Index+1 < Size) {
+        for_each_elem<Index+1>(std::forward<Tuple>(tuple),
+                    std::forward<Func>(func));
+    }
+}
 
 
 
@@ -109,9 +128,16 @@ int main() {
   const auto tuple_of_5_ints = tuple_of<int,5>();
   const auto tuple_of_0_ints = tuple_of<int,0>();
   const auto v0 = square_seq_v<0>; // (const std::__1::tuple<>) $0 = {}
-  const auto v5 = square_seq_v<5>;
+  auto v5 = square_seq_v<5>;
+  //auto v6 = std::remove_const<decltype(v5)>(v5);
   static_assert(std::tuple_size<decltype(v0)>::value == 0);
   static_assert(std::tuple_size<decltype(v5)>::value == 5);
+  // using index sequence implies all members in the tuple is integer
+  // const float constant =0.5 would compile but x will be rounded to integer
+  const int constant = 5;
+  for_each_elem(v5, print_element);
+  for_each_elem(v5,[&](auto &x) {x+=constant; } ) ;
+  for_each_elem(v5, print_element);
 
   return 0;
 }
