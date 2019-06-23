@@ -99,15 +99,16 @@ auto print_element = [](const auto &elm) {std::cout<<elm << " ";};
 //iteration over tuples similar as for_each
 //for_each_elem(tuple, function_to_apply)
 // generic form
+// 1st argument is tuple element, additional arguments are passed by
 template <size_t Index=0, typename Tuple,
          size_t Size = std::tuple_size_v<std::decay_t<Tuple>>,
-         typename Func> //additional arguments passed to the callable
-void for_each_elem(Tuple &&tuple, Func &&func) {
-    //std::invoke(func,std::get<Index>(tuple)); // doesn't work here why?
-    func(std::get<Index>(tuple));
+         typename Func, typename ...Args> //additional arguments passed to the callable
+// it is either a specific return type or constexpr auto if you want to use auto
+constexpr auto for_each_elem(Tuple &&tuple, Func &&func, Args &&...args) {
+    std::invoke(func,std::get<Index>(tuple),args...);
     if constexpr (Index+1 < Size) {
         for_each_elem<Index+1>(std::forward<Tuple>(tuple),
-                    std::forward<Func>(func));
+                    std::forward<Func>(func), std::forward<Args>(args)...);
     }
 }
 
@@ -139,5 +140,8 @@ int main() {
   for_each_elem(v5,[&](auto &x) {x+=constant; } ) ;
   for_each_elem(v5, print_element);
 
+  //test with addtional args and standalone lambda
+  for_each_elem(v5,[&](auto &x,int multiplier) {x*=multiplier; }, constant) ;
+  for_each_elem(v5, print_element);
   return 0;
 }
