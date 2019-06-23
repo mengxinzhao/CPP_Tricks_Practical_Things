@@ -93,7 +93,7 @@ template<typename T, std::size_t N>
 constexpr auto array_of() {
   return array_of_impl<T,N>(std::make_index_sequence<N>{});
 }
-
+#if 0
 // generate an array of Type T, size N and value V
 template<typename T, std::size_t N>
 constexpr auto array_of(T &&v) {
@@ -101,6 +101,20 @@ constexpr auto array_of(T &&v) {
   arr.fill(v);
   return arr;
 }
+#endif
+// generate an array of Type T, size N and apply func on every index
+template<typename T, std::size_t N, typename F,std::size_t ...Is>
+constexpr auto array_of_impl(F && func, std::index_sequence<Is...>){
+    // to avoid -Wc++11-narrowing
+    using ElemType = std::common_type_t<T,std::size_t>;
+    return std::array<ElemType,N>{ {func(Is)...} };
+}
+
+template<typename T, std::size_t N, typename F>
+constexpr auto array_of(F &&func) {
+  return array_of_impl<T,N>(std::forward<F>(func), std::make_index_sequence<N>{});
+}
+
 
 //generate a number index sequence  that does square to the provided sequence
 // the result is a tuple object
@@ -202,7 +216,10 @@ int main() {
 
   const auto ar3 = array_of<int,3>();
   const auto ar4 = array_of<int,0>();
-  const auto ar5 = array_of<int,5>(9);
-
+  //const auto ar5 = array_of<int,5>(9);
+  const auto ar6 = array_of<int,5>([=](auto x) {return x * x;});
+  for (const auto &e:ar6)
+    std::cout<<e<<" ";
+  std::cout<<std::endl;
   return 0;
 }
