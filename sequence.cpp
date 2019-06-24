@@ -191,12 +191,22 @@ void print_tuple(Tuple &&tuple) {
 // generate an array of x-d coordinates from index sequence for a x-d grid
 // i.e [(0,0), (0,1), (0,2), (0,3), (1,0),(1,1), (1,2), (1,3)...] for a (4x4)
 // template parameter: D dimension,  Sz  grid size, N index_sequence<N>
-template <size_t D, size_t Sz, size_t N, size_t... Is>
-constexpr auto generate_xd_coordinates_impl(std::index_sequence<Is...>) {
-  return std::array<std::array<size_t, D>, N>{{{Is % Sz, (Is / Sz) % Sz}...}};
+template <size_t D, size_t Sz, size_t Is> constexpr auto convert() {
+  std::array<size_t, D> result{};
+  size_t is = Is;
+  for (auto i = 0; i < D; i++) {
+    result[i] = is % Sz;
+    is /= Sz;
+  }
+  return result;
 }
 
-template <size_t D, size_t Sz, size_t N>
+template <size_t D, size_t Sz, size_t N, size_t... Is>
+constexpr auto generate_xd_coordinates_impl(std::index_sequence<Is...>) {
+  return std::array<std::array<size_t, D>, N>{{convert<D, Sz, Is>()...}};
+}
+
+template <size_t D, size_t Sz, size_t N = Sz *Sz>
 constexpr auto generate_xd_coordinates() {
   return generate_xd_coordinates_impl<D, Sz, N>(std::make_index_sequence<N>{});
 }
@@ -249,9 +259,13 @@ int main() {
       array_of<int, 5>([=](auto x) -> decltype(x) { return x * x; });
   const auto ar7 = std::array<tuple_of<int, 2>, 2>{std::make_tuple(3, 4),
                                                    std::make_tuple(5, 6)};
-  const auto coord_2d = generate_xd_coordinates<2, 16, 16 * 16>();
+  const auto coord_2d = generate_xd_coordinates<2, 8>();
   for (const auto &elm : coord_2d) {
     std::cout << elm[0] << " " << elm[1] << std::endl;
+  }
+  const auto coord_3d = generate_xd_coordinates<2, 4, 64>();
+  for (const auto &elm : coord_2d) {
+    std::cout << elm[0] << " " << elm[1] << " " << elm[2] << std::endl;
   }
   return 0;
 }
