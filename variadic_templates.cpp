@@ -9,6 +9,8 @@
 #include <iostream>
 #include <tuple>
 #include <utility>
+#include <type_traits>
+
 template <typename T> void P(T x) { std::cout << x << ' '; }
 
 void foo(char a) {
@@ -42,12 +44,16 @@ float extra_stuff(int i, float f, std::string s) {
 
 template <typename Tuple, size_t... Is>
 auto middle_man(int i, const Tuple &tpl, std::index_sequence<Is...>) {
-  return extra_stuff(i, std::get<Is>(tpl)...);
+  if constexpr (sizeof...(Is) > 0)
+    return extra_stuff(i, std::get<Is>(tpl)...);
+  else
+      std::cout<<"no extra stuff"<<std::endl;
+
 }
 
 template <typename Tuple> auto fun(const int &i, const Tuple &tpl) {
   return middle_man(i, tpl,
-                    std::make_index_sequence<std::tuple_size_v<Tuple>>{});
+                    std::make_index_sequence<std::tuple_size_v<std::decay_t<decltype(tpl)>>>{});
 }
 
 int main() {
@@ -65,5 +71,6 @@ int main() {
   std::cout << std::tuple_size_v<decltype(t2.secondary)> << std::endl;
 
   auto result = fun(4, t1.secondary);
+  fun(4, t2.secondary);
   return 0;
 }
