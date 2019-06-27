@@ -54,5 +54,9 @@ int main() {
 
   // pointer works too
   auto result9 = calculate(4, 1, *std::make_shared<float>(4));
+
+  // rvalue reference 
+  auto &&pi_rref = almost_pi;
+  auto result10 = calculate(4, 1, pi_rref);
   return 0;
 }
