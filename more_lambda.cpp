@@ -1,0 +1,63 @@
+#include <algorithm>
+#include <array>
+#include <iostream>
+#include <utility>
+#include <variant>
+// Even more interesting things about lambda from c++ weekly with Jason Tuerner
+
+// inheriting from lambdas
+// lambda is itself a type and can be inherited
+
+template <typename L1, typename L2>
+struct S : L1, L2 {
+  S(L1 l1, L2 l2) : L1(std::move(l1)), L2(std::move(l2)) {}
+  using L1::operator();
+  using L2::operator();
+};
+
+template <typename L1, typename L2>
+auto make_combined(L1 &&l1, L2 &&l2) {
+  // Use the decay to produce the resulting type as if the type was passed by
+  // value as an argument.
+  return S<std::decay_t<L1>, std::decay_t<L2>>(std::forward<L1>(l1),
+                                               std::forward<L2>(l2));
+}
+
+// use as a visitor to visit a range of things
+template <typename... Ts>
+struct Visitor : Ts... {
+  Visitor(Ts &&... ts) : Ts(std::forward<Ts>(ts))... {}
+  using Ts::operator()...;
+};
+
+// class template deduction guide.==>actually not needed
+// template <typename... Ts>
+// Visitor(Ts...)->Visitor<std::decay_t<Ts>...>;
+
+int main() {
+  auto l1 = []() { return 4; };
+  auto l2 = [](int i) { return i * 4; };
+
+  auto combined1 = make_combined(l1, l2);
+  // c++17 template auto deduction
+  auto combined2 = S(l1, l2);
+  std::cout << combined1() << std::endl;
+  std::cout << combined1(10) << std::endl;
+  std::cout << combined2(10) << std::endl;
+
+  auto combined3 =
+      make_combined([]() { return 4; }, [](float &&a) { return a * 0.8; });
+  std::cout << combined3(0.4) << std::endl;
+
+  std::array<std::variant<float, int>, 5> data{3.2f, 2.0f, 2, 0.4f, 3};
+  int sum_int = 0;
+  float sum_float = 0;
+  // sum int and float seperately
+  Visitor v{[&sum_int](const int v) { sum_int += v; },
+            [&sum_float](const float f) { sum_float += f; }};
+  std::for_each(data.cbegin(), data.cend(),
+                [&v](const auto &elem) { std::visit(v, elem); });
+  std::cout << sum_int << std::endl;
+  std::cout << sum_float << std::endl;
+  return 0;
+}
