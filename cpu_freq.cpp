@@ -10,6 +10,8 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <experimental/filesystem>  // link with -lstdc++fs
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -19,10 +21,11 @@
 #define MSR_IA32_MPERF 0x000000e7
 #define MSR_IA32_APERF 0x000000e8
 
+namespace fs = std::experimental::filesystem;
 // The CPU can and will speculatively execute that RDTSC, though, so the
 // results can be non-monotonic if compared on different CPUs.
 //
-static inline uint64_t rdtsc_ordered() {
+static inline uint64_t rdtsc() {
   //
   // Use lfence to prevent execution of later instructions until it retires. e.g. to
   // stop _rdtsc() from reading the cycle-counter while earlier work is still pending in
@@ -31,6 +34,17 @@ static inline uint64_t rdtsc_ordered() {
   // Here instead of using raw asm codes, I'm using Intel C/C++ compiler intrinsic
   _mm_lfence();
   return __rdtsc();
+}
+uint64_t rdtscp(int cpuIdx) {
+  // The RDTSCP instruction waits until all previous
+  // instructions have been executed before reading the counter. However, subsequent instructions
+  // may begin execution before the read operation is performed.
+  // Kernel sets up IA32_TSC_AUX = numa_node << 12 | cpuid
+  uint32_t tsc_aux = 0;
+  auto tsc = __rdtscp(&tsc_aux);
+  if ((tsc_aux & 0xfff) != cpuIdx)
+    std::cout << "actual read out cpu " << (tsc_aux & 0xfff) << std::endl;
+  return tsc;
 }
 
 // rdmsr/wrmsr can't be executed in user space period.
@@ -60,7 +74,7 @@ static uint64_t rdmsr(unsigned int msr, int cpu) {
   uint64_t val;
   char msr_file_name[64];
   sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
-  std::cout << msr_file_name << std::endl;
+  // std::cout << "msr: " << msr_file_name << std::endl;
   fd = open(msr_file_name, O_RDONLY);
   if (fd < 0) return -1;
   if (lseek(fd, msr, SEEK_CUR) == -1) goto err;
@@ -71,6 +85,7 @@ err:
   close(fd);
   return -1;
 }
+
 /*
  * Generic CPUID function
  */
@@ -121,11 +136,51 @@ long long timespec_diff_us(struct timespec start, struct timespec end) {
   return (temp.tv_sec * 1000000) + (temp.tv_nsec / 1000);
 }
 
+int test_permission(int cpu) {
+  char msr_file_name[64];
+  sprintf(msr_file_name, "/dev/cpu/%d/msr", cpu);
+  auto s = fs::status(msr_file_name);
+  if (fs::status_known(s))
+    std::cout << "status known" << std::endl;
+  else
+    std::cout << "status unknown" << std::endl;
+  if (fs::exists(s)) {
+    std::cout << "exist!" << std::endl;
+    std::cout << "uid: " << getuid() << std::endl;
+    auto p = s.permissions();
+    std::cout << ((p & fs::perms::owner_read) != fs::perms::none ? "r" : "-")
+              << ((p & fs::perms::owner_write) != fs::perms::none ? "w" : "-")
+              << ((p & fs::perms::owner_exec) != fs::perms::none ? "x" : "-")
+              << ((p & fs::perms::group_read) != fs::perms::none ? "r" : "-")
+              << ((p & fs::perms::group_write) != fs::perms::none ? "w" : "-")
+              << ((p & fs::perms::group_exec) != fs::perms::none ? "x" : "-")
+              << ((p & fs::perms::others_read) != fs::perms::none ? "r" : "-")
+              << ((p & fs::perms::others_write) != fs::perms::none ? "w" : "-")
+              << ((p & fs::perms::others_exec) != fs::perms::none ? "x" : "-") << '\n';
+    auto readable = ((p & fs::perms::owner_read) != fs::perms::none) ? getuid() == 0 : true;
+    std::cout << "readable " << std::boolalpha << readable << std::endl;
+  }
+
+  if (fs::is_regular_file(s)) std::cout << " is a regular file\n";
+}
+
+static inline int bindCPU(int cpu) {
+  cpu_set_t set;
+
+  if (sched_getaffinity(getpid(), sizeof(set), &set) == 0) {
+    CPU_ZERO(&set);
+    CPU_SET(cpu, &set);
+    return sched_setaffinity(getpid(), sizeof(set), &set);
+  }
+  return 1;
+}
+
 int main() {
   std::array<uint32_t, 4> cpuInfo{0, 0, 0, 0};
   std::vector<std::array<uint32_t, 4>> data;
   std::vector<std::array<uint32_t, 4>> extdata;
   cpuid(cpuInfo.data(), 0);
+
   std::cout << "highest valid function Id: " << cpuInfo[0] << std::endl;
   auto nIds = cpuInfo[0];
   for (int i = 0; i <= nIds; ++i) {
@@ -165,7 +220,7 @@ int main() {
   // gets the number of the highest valid extended ID.
   cpuid(cpuInfo.data(), 0x80000000);
   auto nExIds = cpuInfo[0];
-  std::cout << "extended function number: " << std::hex << nExIds - 0x80000000 << std::endl;
+  // std::cout << "extended function number: " << std::hex << nExIds - 0x80000000 << std::endl;
 
   for (int i = 0x80000000; i <= nExIds; ++i) {
     cpuidex(cpuInfo.data(), i, 0);
@@ -176,6 +231,8 @@ int main() {
   std::cout << "invariant TSC supported: " << std::boolalpha << bool(f_7_EDX & (0x1 << 8))
             << std::endl;
 
+  test_permission(1);
+  test_permission(100);
   // only for display purpose not an actual read of max freq
   auto cpu_khz = max_cpu_khz_from_cpuid();
   std::cout << "max cpu_khz: " << cpu_khz << std::endl;
@@ -187,30 +244,43 @@ int main() {
 
   // Mperf register is defined to tick at P0 (maximum) frequency. Use TSC counter if it reliably
   // ticks at P0/mperf frequency*/
-  clock_gettime(CLOCK_REALTIME, &start_time);
-  begin_tick = rdtsc_ordered();
-  uint64_t aperf = rdmsr(MSR_IA32_APERF, cpu);
-  uint64_t mperf = rdmsr(MSR_IA32_MPERF, cpu);
+  for (size_t cpu = 0; cpu < sysconf(_SC_NPROCESSORS_ONLN); cpu++) {
+    bindCPU(cpu);
+    clock_gettime(CLOCK_REALTIME, &start_time);
+    begin_tick = rdtscp(cpu);
+    uint64_t aperf = rdmsr(MSR_IA32_APERF, cpu);
+    uint64_t mperf = rdmsr(MSR_IA32_MPERF, cpu);
 
-  for (int i = 0; i < 1000; i++)
-    for (int j = std::numeric_limits<int>::max(); j > 1;) j = (int)sqrt(j);
+    sleep(1);
+    // for (int i = 0; i < std::numeric_limits<int>::max() / 10; i++)
+    //   for (int j = std::numeric_limits<int>::max(); j > 1;) j = (int)sqrt(j);
 
-  uint64_t aaperf = rdmsr(MSR_IA32_APERF, cpu);
-  uint64_t mmperf = rdmsr(MSR_IA32_MPERF, cpu);
-  uint64_t end_tick = rdtsc_ordered();
-  clock_gettime(CLOCK_REALTIME, &end_time);
-  auto diff_time = timespec_diff_us(start_time, end_time);
-  auto tick_delta = end_tick - begin_tick;
-  auto mperf_diff = mmperf - mperf;
-  auto aperf_diff = aaperf - aperf;
-  std::cout << "mperf_diff : " << mperf_diff << std::endl;
-  std::cout << "aperf_diff : " << aperf_diff << std::endl;
-  std::cout << "diff in us: " << diff_time << std::endl;
-  auto max_frequency = (double)tick_delta / diff_time / 1000.0;
-  std::cout << "max_frequency: " << max_frequency << " GHz" << std::endl;
-  // running freq includiung freq in turbo
-  auto running_freq = max_frequency * ((double)aperf_diff / mperf_diff);
-  std::cout << "average running_freq: " << running_freq << " GHz" << std::endl;
-  auto percent = mperf_diff * 100.0 / tick_delta;
-  std::cout << "C0 percent: " << percent << std::endl;
+    uint64_t aaperf = rdmsr(MSR_IA32_APERF, cpu);
+    uint64_t mmperf = rdmsr(MSR_IA32_MPERF, cpu);
+    uint64_t end_tick = rdtscp(cpu);
+    clock_gettime(CLOCK_REALTIME, &end_time);
+    auto diff_time = timespec_diff_us(start_time, end_time);
+    auto tick_delta = end_tick - begin_tick;
+    auto mperf_diff = mmperf - mperf;
+    auto aperf_diff = aaperf - aperf;
+    std::cout << "CPU: " << cpu << std::endl;
+    std::cout << "mperf before: " << mperf << std::endl;
+    std::cout << "aperf before: " << aperf << std::endl;
+    std::cout << "mperf after: " << mmperf << std::endl;
+    std::cout << "aaperf after: " << aaperf << std::endl;
+    std::cout << "mperf_diff : " << mperf_diff << std::endl;
+    std::cout << "aperf_diff : " << aperf_diff << std::endl;
+    std::cout << "time before " << start_time.tv_sec << "  " << start_time.tv_nsec << std::endl;
+    std::cout << "time after " << end_time.tv_sec << "  " << end_time.tv_nsec << std::endl;
+    std::cout << "diff in us: " << diff_time << std::endl;
+    std::cout << "begin ticks: " << begin_tick << std::endl;
+    std::cout << "end ticks: " << end_tick << std::endl;
+    auto max_frequency = (double)tick_delta / diff_time / 1000.0;
+    std::cout << "max_frequency: " << max_frequency << " GHz" << std::endl;
+    // running freq includiung freq in turbo
+    auto running_freq = max_frequency * ((double)aperf_diff / mperf_diff);
+    std::cout << "average running_freq: " << running_freq << " GHz" << std::endl;
+    auto percent = mperf_diff * 100.0 / tick_delta;
+    std::cout << "C0 percent: " << percent << std::endl;
+  }
 }
