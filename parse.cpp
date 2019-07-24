@@ -6,38 +6,27 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-struct ParseModel {
-  constexpr static char pattern[] = "model\\s*:\\s*\\d*";
-  using return_type = std::vector<std::string>;
-  return_type parse(std::string const &str) {
-    std::regex re(pattern);
-    std::smatch m;
-    std::vector<std::string> matches;
-    if (std::regex_search(str, m, re)) {
-      for (size_t i = 0; i < m.size(); i++) {
-        matches.push_back(m[i]);
-      }
-    }
 
-    return matches;
+std::vector<std::string> internal_parse(std::string const &str, std::regex const &re) {
+  std::vector<std::string> ret;
+  for (std::sregex_iterator i = std::sregex_iterator(str.begin(), str.end(), re);
+       i != std::sregex_iterator(); ++i) {
+    std::smatch m = *i;
+    ret.push_back(m[1].str());
   }
+  return ret;
+}
+
+struct ParseModel {
+  constexpr static char pattern[] = "model\\s*:\\s*(\\d+)";
+  using return_type = std::vector<std::string>;
+  return_type parse(std::string const &str) { return internal_parse(str, std::regex(pattern)); }
 };
 
 struct ParseVendor {
-  constexpr static char pattern[] = "vendor_id\\s*:\\s*[a-zA-Z]*";
+  constexpr static char pattern[] = "vendor_id\\s*:\\s*([a-zA-Z]*)";
   using return_type = std::vector<std::string>;
-  return_type parse(std::string const &str) {
-    std::regex re(pattern);
-    std::smatch m;
-    std::vector<std::string> matches;
-    if (std::regex_search(str, m, re)) {
-      for (size_t i = 0; i < m.size(); i++) {
-        matches.push_back(m[i]);
-      }
-    }
-
-    return matches;
-  }
+  return_type parse(std::string const &str) { return internal_parse(str, std::regex(pattern)); }
 };
 
 template <typename... Callback>
