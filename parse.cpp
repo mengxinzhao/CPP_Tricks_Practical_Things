@@ -18,17 +18,6 @@ std::vector<std::string> internal_parse(std::string const &str, std::regex const
   return ret;
 }
 
-// struct ParseModel {
-//   constexpr static char pattern[] = "model\\s*:\\s*(\\d+)";
-//   using return_type = std::vector<std::string>;
-//   return_type parse(std::string const &str) { return internal_parse(str, std::regex(pattern)); }
-// };
-//
-// struct ParseVendor {
-//   constexpr static char pattern[] = "vendor_id\\s*:\\s*([a-zA-Z]*)";
-//   using return_type = std::vector<std::string>;
-//   return_type parse(std::string const &str) { return internal_parse(str, std::regex(pattern)); }
-// };
 
 template <typename... Callback>
 std::tuple<typename Callback::ReturnType...> ReadFile(const char *filename,
@@ -69,10 +58,6 @@ inline std::string StringToString(const std::string &str) { return str; }
       return ret;                                                \
     }                                                            \
   };
-// if constexpr (std::is_same_v<ElementType, decltype(matches)::value_type>) \
-  //   return matches;                                                         \
-  // else {
-// }
 DEFINE_CPUINFO_PARSER(Model, "model\\s*:\\s*(\\d+)", UInt)
 DEFINE_CPUINFO_PARSER(Vendor, "vendor_id\\s*:\\s*([a-zA-Z]*)", String)
 DEFINE_CPUINFO_PARSER(Frequency, "cpu MHz\\s*:\\s*(\\d+.\\d*)", Double)
