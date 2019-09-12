@@ -34,6 +34,11 @@ struct Visitor : Ts... {
 // template <typename... Ts>
 // Visitor(Ts...)->Visitor<std::decay_t<Ts>...>;
 
+struct Results {
+    int &a;
+    int &b;
+};
+
 int main() {
   auto l1 = []() { return 4; };
   auto l2 = [](int i) { return i * 4; };
