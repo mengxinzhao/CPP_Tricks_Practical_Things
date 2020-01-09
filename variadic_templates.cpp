@@ -66,6 +66,8 @@ enum COLOR { RED, MULTI };
 
 struct Red {
   int width = 10;
+  Red(int w ):width(w) {}
+  Red(){}
 };
 
 struct Blue {
@@ -89,6 +91,10 @@ class Draw {
 
 class DrawRed : public Draw<RED, Red> {
  public:
+  explicit DrawRed(const int width)  {
+      std::get<0>(_params) = Red{width};
+  }
+
   void draw() { std::cout << "drawing red..." << std::get<0>(_params).width << std::endl; }
 };
 
@@ -119,7 +125,7 @@ int main() {
 
   auto draw_multi = DrawMulti();
   draw_multi.draw();
-  auto draw_red = DrawRed();
+  auto draw_red = DrawRed(100);
   draw_red.draw();
   return 0;
 }
